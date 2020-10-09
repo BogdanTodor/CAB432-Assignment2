@@ -1,0 +1,24 @@
+extends layout
+
+block content
+  h1= title
+  div(class="container")
+  div(class="row")
+    div(class="col")
+      form(method='POST' action='/add-rule/')
+        div(class="form-group")
+          input.searchTerm(type='text' name='q' placeholder='Enter new tweet rule...' required='true')
+          button.searchButton(type='submit') Apply
+      p Active Rules:
+      div.scrollTable
+        table(class="table")
+          tbody
+            each rule in rules
+              form(method='POST' action='/delete-rule/')
+                div(class="form-group")
+                  tr
+                    td=rule.value
+                    td
+                      button(type="submit" name="delete" value=rule.id class="btn btn-danger deleteButton") Delete
+    div(class="col")
+      p Sentiment Analysis stuff goes this side

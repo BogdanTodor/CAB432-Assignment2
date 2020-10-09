@@ -1,0 +1,41 @@
+body {
+  padding: 50px;
+  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+}
+
+a {
+  color: #00B7FF;
+}
+
+.searchTerm {
+  width: 90%;
+  border: 3px solid #00B4CC;
+  /* border-right: none; */
+  padding: 5px;
+  height: 25px;
+  border-radius: 5px 5px 5px 5px;
+  outline: none;
+  color: #000000;
+}
+
+.searchButton {
+  width: 10%;
+  border: 3px solid #00B4CC;
+  border-radius: 5px 5px 5px 5px;
+  text-align: center;
+  display: inline-block;
+  outline: none;
+  color: #000000;
+  cursor: pointer;
+}
+
+.scrollTable {
+  position: relative;
+  height: 200px;
+  overflow: auto;
+  display: block;
+}
+
+.deleteButton {
+  float: right;
+}

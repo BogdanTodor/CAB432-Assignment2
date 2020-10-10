@@ -31,11 +31,27 @@ a {
 
 .scrollTable {
   position: relative;
+  border: 3px solid #00B4CC;
+  padding: 3px;
+  margin-bottom: 5px;
   height: 200px;
   overflow: auto;
   display: block;
 }
 
+.scrollTweets {
+  position: relative;
+  border: 3px solid #00B4CC;
+  height: 400px;
+  padding: 3px;
+  overflow: auto;
+  display: block;
+}
+
 .deleteButton {
+  float: right;
+}
+
+.refreshButton {
   float: right;
 }

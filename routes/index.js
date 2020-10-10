@@ -11,6 +11,9 @@ const twitter = {
 };
 const filteredStream = streamConnect()
 
+let tweets = [];
+let i = 0;
+
 /* Routes */
 // GET home page
 router.get('/', async (req, res) => {
@@ -30,8 +33,13 @@ router.get('/', async (req, res) => {
 
   res.render('index', {
     title: 'Welcome to Twitter Sentiment Analysis',
-    rules: rules
-  });
+    rules: rules,
+    tweets: tweets
+   });
+});
+
+router.post('/', async(req, res) => {
+  res.redirect('/');
 });
 
 // POST new rule to twitter stream
@@ -42,9 +50,7 @@ router.post('/add-rule/', async (req, res) => {
   const twitter_options = createTwitterRulesOptions();
   const twitter_url = `https://${twitter_options.hostname}${twitter_options.path}`;
   const data = {
-    'add': [{
-      "value": new_rule
-    }]
+    'add': [{"value": new_rule, "tag": new_rule}]
   };
   const twitter_rsp = await postAPIRequest(twitter_url, data, twitter_token);
   // console.log('Twitter Post Rsp: ' + JSON.stringify(twitter_rsp));
@@ -139,16 +145,22 @@ function streamConnect() {
       var result = sentiment.analyze(lessURL);
       // console.dir(result);
 
+      // Keep count of incoming tweets for testing purposes (delete later)
+      i++;
+
       const dataObj = {
-        tweet: lessURL,
+        tweetText: lessURL,
         tweetId: json.data.id,
+        num: i,
+        tag: json.matching_rules[0].tag,
         score: result.score,
         comparativeScore: result.comparative
       }
-
       console.log(dataObj);
 
-    } catch (e) {
+      tweets.unshift(dataObj);
+
+  } catch (e) {
       // Keep alive signal received. Do nothing.
     }
   }).on('error', error => {
@@ -158,7 +170,6 @@ function streamConnect() {
   });
 
   return stream;
-
 }
 
 module.exports = router;

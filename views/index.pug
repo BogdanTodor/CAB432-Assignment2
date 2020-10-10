@@ -9,7 +9,7 @@ block content
         div(class="form-group")
           input.searchTerm(type='text' name='q' placeholder='Enter new tweet rule...' required='true')
           button.searchButton(type='submit') Apply
-      p Active Rules:
+      b Active Rules:
       div.scrollTable
         table(class="table")
           tbody
@@ -20,5 +20,12 @@ block content
                     td=rule.value
                     td
                       button(type="submit" name="delete" value=rule.id class="btn btn-danger deleteButton") Delete
+      div
+      form(method='POST' action='/')
+        b Twitter Stream: <button class="btn refreshButton"> <span class="glyphicon glyphicon-refresh"></span> Refresh </button>
+      br
+      .scrollTweets
+        each tweet in tweets
+          ul <b>#{tweet.num}:</b> #{tweet.tweetText} <b> tag:</b> #{tweet.tag}, <b>score:</b> (#{tweet.score}, #{tweet.comparativeScore})
     div(class="col")
       p Sentiment Analysis stuff goes this side

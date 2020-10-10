@@ -1,13 +1,17 @@
-var express = require('express');
+const express = require('express');
 const axios = require('axios');
-var router = express.Router();
+const needle = require('needle');
+const router = express.Router();
+
+/* API Keys */
+const twitter = {
+  bearer_token : 'AAAAAAAAAAAAAAAAAAAAAH7SGwEAAAAAMerg5B1I%2FC48tDU6b5qC8xHcS%2BY%3DBAvtWfRzXTSlv7qGgPVZTvg8s8VxtUqt1BWOMEFpGjFVghF30D'
+};
+const filteredStream = streamConnect()
 
 /* Routes */
-// GET home page]
+// GET home page
 router.get('/', async(req, res) => {
-  let rules = [];
-  console.log('Rules: ' + JSON.stringify(rules));
-
   // Get Active Twitter Rules
   const twitter_token = getTwitterAuth();
   const twitter_options = createTwitterRulesOptions();
@@ -15,9 +19,12 @@ router.get('/', async(req, res) => {
   const twitter_rsp = await getAPIResponse(twitter_url, twitter_token);
   console.log('Twitter Rsp: ' + JSON.stringify(twitter_rsp));
 
-  twitter_rsp.data.forEach(function (rule) {
-    rules.push(rule);
-  });
+  let rules = [];
+  if (twitter_rsp.data) {
+    twitter_rsp.data.forEach(function (rule) {
+      rules.push(rule);
+    });
+  }
 
   res.render('index', { 
     title: 'Welcome to Twitter Sentiment Analysis',
@@ -29,7 +36,7 @@ router.get('/', async(req, res) => {
 router.post('/add-rule/', async (req, res) => {
   let new_rule = req.body.q;
 
-  const twitter_token = getTwitterAuth(new_rule);
+  const twitter_token = getTwitterAuth();
   const twitter_options = createTwitterRulesOptions();
   const twitter_url = `https://${twitter_options.hostname}${twitter_options.path}`;
   const data = {
@@ -41,12 +48,12 @@ router.post('/add-rule/', async (req, res) => {
   res.redirect('/');
 });
 
-// POST new rule to twitter stream
+// POST delete rule from twitter stream
 router.post('/delete-rule/', async (req, res) => {
   let old_rule = req.body.delete;
   console.log('deleting: ' + old_rule);
 
-  const twitter_token = getTwitterAuth(old_rule);
+  const twitter_token = getTwitterAuth();
   const twitter_options = createTwitterRulesOptions();
   const twitter_url = `https://${twitter_options.hostname}${twitter_options.path}`;
   const data = {
@@ -58,22 +65,8 @@ router.post('/delete-rule/', async (req, res) => {
   res.redirect('/');
 });
 
-/* API Keys */
-const twitter = {
-  bearer_token : 'AAAAAAAAAAAAAAAAAAAAAH7SGwEAAAAAMerg5B1I%2FC48tDU6b5qC8xHcS%2BY%3DBAvtWfRzXTSlv7qGgPVZTvg8s8VxtUqt1BWOMEFpGjFVghF30D'
-};
-
 /* Helper Functions */
 function getTwitterAuth() {
-  return { 
-      headers: {
-          'Content-type': 'application/json',
-          'Authorization': 'Bearer ' + twitter.bearer_token
-      }
-  };
-}
-
-function getTwitterAuth(rule) {
   return { 
       headers: {
           'Content-type': 'application/json',
@@ -86,6 +79,14 @@ function createTwitterRulesOptions() {
   const options = {
       hostname: 'api.twitter.com',
       path: '/2/tweets/search/stream/rules'
+  }
+  return options;
+}
+
+function createTwitterStreamOptions() {  
+  const options = {
+      hostname: 'api.twitter.com',
+      path: '/2/tweets/search/stream'
   }
   return options;
 }
@@ -106,6 +107,33 @@ async function postAPIRequest(url, data, config_token) {
   } catch (error) {
       console.log(error);
   }
+}
+
+function streamConnect() {
+  //Listen to the stream
+  const options = {
+      timeout: 20000
+    }
+
+  const token = getTwitterAuth();
+  
+  const stream = needle.get('https://api.twitter.com/2/tweets/search/stream', token, options);
+
+  stream.on('data', data => {
+  try {
+      const json = JSON.parse(data);
+      console.log(json);
+  } catch (e) {
+      // Keep alive signal received. Do nothing.
+  }
+  }).on('error', error => {
+      if (error.code === 'ETIMEDOUT') {
+          stream.emit('timeout');
+      }
+  });
+
+  return stream;
+  
 }
 
 module.exports = router;

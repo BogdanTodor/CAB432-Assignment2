@@ -2,16 +2,18 @@ const express = require('express');
 const axios = require('axios');
 const needle = require('needle');
 const router = express.Router();
+const Sentiment = require('sentiment');
+
 
 /* API Keys */
 const twitter = {
-  bearer_token : 'AAAAAAAAAAAAAAAAAAAAAH7SGwEAAAAAMerg5B1I%2FC48tDU6b5qC8xHcS%2BY%3DBAvtWfRzXTSlv7qGgPVZTvg8s8VxtUqt1BWOMEFpGjFVghF30D'
+  bearer_token: 'AAAAAAAAAAAAAAAAAAAAAH7SGwEAAAAAMerg5B1I%2FC48tDU6b5qC8xHcS%2BY%3DBAvtWfRzXTSlv7qGgPVZTvg8s8VxtUqt1BWOMEFpGjFVghF30D'
 };
 const filteredStream = streamConnect()
 
 /* Routes */
 // GET home page
-router.get('/', async(req, res) => {
+router.get('/', async (req, res) => {
   // Get Active Twitter Rules
   const twitter_token = getTwitterAuth();
   const twitter_options = createTwitterRulesOptions();
@@ -26,10 +28,10 @@ router.get('/', async(req, res) => {
     });
   }
 
-  res.render('index', { 
+  res.render('index', {
     title: 'Welcome to Twitter Sentiment Analysis',
     rules: rules
-   });
+  });
 });
 
 // POST new rule to twitter stream
@@ -40,7 +42,9 @@ router.post('/add-rule/', async (req, res) => {
   const twitter_options = createTwitterRulesOptions();
   const twitter_url = `https://${twitter_options.hostname}${twitter_options.path}`;
   const data = {
-    'add': [{"value": new_rule}]
+    'add': [{
+      "value": new_rule
+    }]
   };
   const twitter_rsp = await postAPIRequest(twitter_url, data, twitter_token);
   // console.log('Twitter Post Rsp: ' + JSON.stringify(twitter_rsp));
@@ -57,7 +61,9 @@ router.post('/delete-rule/', async (req, res) => {
   const twitter_options = createTwitterRulesOptions();
   const twitter_url = `https://${twitter_options.hostname}${twitter_options.path}`;
   const data = {
-    'delete': {'ids' : [old_rule]}
+    'delete': {
+      'ids': [old_rule]
+    }
   };
   const twitter_rsp = await postAPIRequest(twitter_url, data, twitter_token);
   console.log('Twitter Post Rsp: ' + JSON.stringify(twitter_rsp));
@@ -67,73 +73,92 @@ router.post('/delete-rule/', async (req, res) => {
 
 /* Helper Functions */
 function getTwitterAuth() {
-  return { 
-      headers: {
-          'Content-type': 'application/json',
-          'Authorization': 'Bearer ' + twitter.bearer_token
-      }
+  return {
+    headers: {
+      'Content-type': 'application/json',
+      'Authorization': 'Bearer ' + twitter.bearer_token
+    }
   };
 }
 
-function createTwitterRulesOptions() {  
+function createTwitterRulesOptions() {
   const options = {
-      hostname: 'api.twitter.com',
-      path: '/2/tweets/search/stream/rules'
+    hostname: 'api.twitter.com',
+    path: '/2/tweets/search/stream/rules'
   }
   return options;
 }
 
-function createTwitterStreamOptions() {  
+function createTwitterStreamOptions() {
   const options = {
-      hostname: 'api.twitter.com',
-      path: '/2/tweets/search/stream'
+    hostname: 'api.twitter.com',
+    path: '/2/tweets/search/stream'
   }
   return options;
 }
 
-async function getAPIResponse(url, config_token) {  
+async function getAPIResponse(url, config_token) {
   try {
-      const response = await axios.get(url, config_token);
-      return response.data;
+    const response = await axios.get(url, config_token);
+    return response.data;
   } catch (error) {
-      console.log(error);
+    console.log(error);
   }
 }
 
-async function postAPIRequest(url, data, config_token) {  
+async function postAPIRequest(url, data, config_token) {
   try {
-      const response = await axios.post(url, data, config_token);
-      return response.data;
+    const response = await axios.post(url, data, config_token);
+    return response.data;
   } catch (error) {
-      console.log(error);
+    console.log(error);
   }
 }
+
+// SENTIMENT ANALYSIS FUNCTION
+
 
 function streamConnect() {
   //Listen to the stream
   const options = {
-      timeout: 20000
-    }
+    timeout: 20000
+  }
 
   const token = getTwitterAuth();
-  
+
   const stream = needle.get('https://api.twitter.com/2/tweets/search/stream', token, options);
 
   stream.on('data', data => {
-  try {
+    try {
       const json = JSON.parse(data);
-      console.log(json);
-  } catch (e) {
-      // Keep alive signal received. Do nothing.
-  }
-  }).on('error', error => {
-      if (error.code === 'ETIMEDOUT') {
-          stream.emit('timeout');
+      const lowerJson = json.data.text.toLowerCase();
+      let re = new RegExp("(?<=:).*")
+      let userRemovedMsg = re.exec(String(lowerJson));
+      let lessURL = String(userRemovedMsg).replace("http\S+", "");
+      var sentiment = new Sentiment();
+      var result = sentiment.analyze(lessURL);
+      // console.dir(result);
+
+      const dataObj = {
+        tweet: lessURL,
+        tweetId: json.data.id,
+        score: result.score,
+        comparativeScore: result.comparative
       }
+
+      console.log(dataObj);
+
+    } catch (e) {
+      // Keep alive signal received. Do nothing.
+    }
+  }).on('error', error => {
+    if (error.code === 'ETIMEDOUT') {
+      stream.emit('timeout');
+    }
   });
 
   return stream;
-  
+
 }
 
 module.exports = router;

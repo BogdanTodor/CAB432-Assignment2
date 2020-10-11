@@ -3,33 +3,57 @@ const axios = require('axios');
 const needle = require('needle');
 const router = express.Router();
 const Sentiment = require('sentiment');
+const redis = require('async-redis');
 
-
-/* API Keys */
+/* API Keys (move to environment variable) */
 const twitter = {
   bearer_token: 'AAAAAAAAAAAAAAAAAAAAAH7SGwEAAAAAMerg5B1I%2FC48tDU6b5qC8xHcS%2BY%3DBAvtWfRzXTSlv7qGgPVZTvg8s8VxtUqt1BWOMEFpGjFVghF30D'
 };
-const filteredStream = streamConnect()
-
-let tweets = [];
-let i = 0;
+streamConnect()
 
 /* Routes */
 // GET home page
 router.get('/', async (req, res) => {
+  const redisClient = redis.createClient();
+  let rules = [];
+  let keys = [];
+  let tweets = [];
+
   // Get Active Twitter Rules
   const twitter_token = getTwitterAuth();
   const twitter_options = createTwitterRulesOptions();
   const twitter_url = `https://${twitter_options.hostname}${twitter_options.path}`;
   const twitter_rsp = await getAPIResponse(twitter_url, twitter_token);
-  console.log('Twitter Rsp: ' + JSON.stringify(twitter_rsp));
-
-  let rules = [];
   if (twitter_rsp.data) {
     twitter_rsp.data.forEach(function (rule) {
       rules.push(rule);
     });
   }
+
+  // Get Redis Keys for Tweets with tags matching the Active Rules
+  for (let rule of rules) {
+    let pattern = rule.value + '*';
+    // console.log('Pattern: ' + pattern)
+    let firstScanResult = await redisClient.scan('0', "MATCH", pattern);
+    let cursor = firstScanResult[0];
+    keys = keys.concat(firstScanResult[1]);
+    // console.log('First scanResult: ' + JSON.stringify(firstScanResult));
+    while (cursor > 0) {
+      let scanResult = await redisClient.scan(cursor, "MATCH", pattern);
+      cursor = scanResult[0];
+      keys = keys.concat(scanResult[1]);
+      // console.log('scanResult: ' + JSON.stringify(scanResult));
+    }
+  }
+  console.log('Keys: ' + JSON.stringify(keys));
+
+  // Use Redis Keys to get Tweets Objects
+  for (let redisKey of keys) {
+    let cachedTweet = await redisClient.get(redisKey); 
+    tweets.push(JSON.parse(cachedTweet));
+    // console.log(JSON.stringify(cachedTweet));
+  }
+  // console.log('Tweets: ' + JSON.stringify(tweets));
 
   res.render('index', {
     title: 'Welcome to Twitter Sentiment Analysis',
@@ -95,14 +119,6 @@ function createTwitterRulesOptions() {
   return options;
 }
 
-function createTwitterStreamOptions() {
-  const options = {
-    hostname: 'api.twitter.com',
-    path: '/2/tweets/search/stream'
-  }
-  return options;
-}
-
 async function getAPIResponse(url, config_token) {
   try {
     const response = await axios.get(url, config_token);
@@ -121,55 +137,70 @@ async function postAPIRequest(url, data, config_token) {
   }
 }
 
-// SENTIMENT ANALYSIS FUNCTION
-
-
-function streamConnect() {
+async function streamConnect() {
   //Listen to the stream
   const options = {
     timeout: 20000
   }
 
   const token = getTwitterAuth();
-
   const stream = needle.get('https://api.twitter.com/2/tweets/search/stream', token, options);
+  const redisClient = redis.createClient();
 
-  stream.on('data', data => {
+  stream.on('data', async data => {
     try {
       const json = JSON.parse(data);
-      const lowerJson = json.data.text.toLowerCase();
-      let re = new RegExp("(?<=:).*")
-      let userRemovedMsg = re.exec(String(lowerJson));
-      let lessURL = String(userRemovedMsg).replace("http\S+", "");
-      var sentiment = new Sentiment();
-      var result = sentiment.analyze(lessURL);
-      // console.dir(result);
+      // console.log("New Tweet: " + JSON.stringify(json));
 
-      // Keep count of incoming tweets for testing purposes (delete later)
-      i++;
+      const redisKey = `${json.matching_rules[0].tag}:${json.data.id}`;
+      // console.log(redisKey);
 
-      const dataObj = {
-        tweetText: lessURL,
-        tweetId: json.data.id,
-        num: i,
-        tag: json.matching_rules[0].tag,
-        score: result.score,
-        comparativeScore: result.comparative
-      }
-      console.log(dataObj);
-
-      tweets.unshift(dataObj);
-
+      // Check if tweet exists in Redis
+      let cacheTweet = await redisClient.get(redisKey); //, (err, result) => {
+        if (cacheTweet) {
+            // console.log("Already in cache");
+        } 
+        else {
+          // console.log('Not in cache');
+          // Get timestamp
+          let timestamp = Math.floor(+new Date());
+          // Run Sentiment Analysis
+          const lowerJson = json.data.text.toLowerCase();
+          let re = new RegExp("(?<=:).*")
+          let userRemovedMsg = re.exec(String(lowerJson));
+          let lessURL = String(userRemovedMsg).replace("http\S+", "");
+          var sentiment = new Sentiment();
+          var result = sentiment.analyze(lessURL);
+          // Create Tweet Obj
+          const dataObj = {
+            tweetText: lessURL,
+            tweetId: json.data.id,
+            timestamp: timestamp,
+            tag: json.matching_rules[0].tag,
+            score: result.score,
+            comparativeScore: result.comparative
+          }
+          // console.log('Formatted Tweet:' + JSON.stringify(dataObj));
+          // Store in Redis
+          let cacheJSON = Object.assign({}, dataObj);
+          console.log('Storing in cache: ' + JSON.stringify(cacheJSON));
+          redisClient.setex(redisKey, 360, JSON.stringify(cacheJSON));
+          tweets.unshift(dataObj);
+        }
+      // });
   } catch (e) {
       // Keep alive signal received. Do nothing.
     }
   }).on('error', error => {
     if (error.code === 'ETIMEDOUT') {
+      console.log('Stream Connection Timed Out');
       stream.emit('timeout');
+      stream.abort();
+      setTimeout(streamConnect(), 5000);
     }
   });
 
   return stream;
-}
+};
 
 module.exports = router;

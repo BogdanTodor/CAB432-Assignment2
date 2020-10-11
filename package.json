@@ -8,6 +8,7 @@
     "serverstart": "DEBUG=twitter-sentiment-analysis:* npm run devstart"
   },
   "dependencies": {
+    "async-redis": "^1.1.7",
     "axios": "^0.20.0",
     "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",

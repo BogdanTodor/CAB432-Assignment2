@@ -26,6 +26,6 @@ block content
       br
       .scrollTweets
         each tweet in tweets
-          ul <b>#{tweet.num}:</b> #{tweet.tweetText} <b> tag:</b> #{tweet.tag}, <b>score:</b> (#{tweet.score}, #{tweet.comparativeScore})
+          ul #{tweet.tweetText} <b> tag:</b> #{tweet.tag}, <b>score:</b> (#{tweet.score}, #{tweet.comparativeScore})
     div(class="col")
       p Sentiment Analysis stuff goes this side

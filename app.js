@@ -3,9 +3,6 @@ const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
-// const redis = require('redis');
-
-// const redisClient = redis.createClient();
 
 const indexRouter = require('./routes/index');
 const usersRouter = require('./routes/users');

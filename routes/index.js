@@ -19,6 +19,19 @@ router.get('/', async (req, res) => {
   let keys = [];
   let tweets = [];
 
+  let labelArray = ['tag1', 'tag2']; // empty
+  let negArray = [130, 56]; // empty
+  let neutralArray = [110, 87]; // empty
+  let posArray = [50, 144]; // empty
+
+  let chartData = [
+    labelArray,
+    negArray,
+    neutralArray,
+    posArray
+  ]
+
+
   // Get Active Twitter Rules
   const twitter_token = getTwitterAuth();
   const twitter_options = createTwitterRulesOptions();
@@ -49,20 +62,27 @@ router.get('/', async (req, res) => {
 
   // Use Redis Keys to get Tweets Objects
   for (let redisKey of keys) {
-    let cachedTweet = await redisClient.get(redisKey); 
+    let cachedTweet = await redisClient.get(redisKey);
     tweets.push(JSON.parse(cachedTweet));
     // console.log(JSON.stringify(cachedTweet));
   }
   // console.log('Tweets: ' + JSON.stringify(tweets));
 
+
+  // For debugging purposes
+  console.log(chartData);
+  console.log(JSON.stringify(chartData));
+
   res.render('index', {
     title: 'Welcome to Twitter Sentiment Analysis',
     rules: rules,
-    tweets: tweets
-   });
+    tweets: tweets,
+    chartData: JSON.stringify(chartData)
+  });
 });
 
-router.post('/', async(req, res) => {
+
+router.post('/', async (req, res) => {
   res.redirect('/');
 });
 
@@ -74,7 +94,10 @@ router.post('/add-rule/', async (req, res) => {
   const twitter_options = createTwitterRulesOptions();
   const twitter_url = `https://${twitter_options.hostname}${twitter_options.path}`;
   const data = {
-    'add': [{"value": new_rule, "tag": new_rule}]
+    'add': [{
+      "value": new_rule,
+      "tag": new_rule
+    }]
   };
   const twitter_rsp = await postAPIRequest(twitter_url, data, twitter_token);
   // console.log('Twitter Post Rsp: ' + JSON.stringify(twitter_rsp));
@@ -157,38 +180,37 @@ async function streamConnect() {
 
       // Check if tweet exists in Redis
       let cacheTweet = await redisClient.get(redisKey); //, (err, result) => {
-        if (cacheTweet) {
-            // console.log("Already in cache");
-        } 
-        else {
-          // console.log('Not in cache');
-          // Get timestamp
-          let timestamp = Math.floor(+new Date());
-          // Run Sentiment Analysis
-          const lowerJson = json.data.text.toLowerCase();
-          let re = new RegExp("(?<=:).*")
-          let userRemovedMsg = re.exec(String(lowerJson));
-          let lessURL = String(userRemovedMsg).replace("http\S+", "");
-          var sentiment = new Sentiment();
-          var result = sentiment.analyze(lessURL);
-          // Create Tweet Obj
-          const dataObj = {
-            tweetText: lessURL,
-            tweetId: json.data.id,
-            timestamp: timestamp,
-            tag: json.matching_rules[0].tag,
-            score: result.score,
-            comparativeScore: result.comparative
-          }
-          // console.log('Formatted Tweet:' + JSON.stringify(dataObj));
-          // Store in Redis
-          let cacheJSON = Object.assign({}, dataObj);
-          console.log('Storing in cache: ' + JSON.stringify(cacheJSON));
-          redisClient.setex(redisKey, 360, JSON.stringify(cacheJSON));
-          tweets.unshift(dataObj);
+      if (cacheTweet) {
+        // console.log("Already in cache");
+      } else {
+        // console.log('Not in cache');
+        // Get timestamp
+        let timestamp = Math.floor(+new Date());
+        // Run Sentiment Analysis
+        const lowerJson = json.data.text.toLowerCase();
+        let re = new RegExp("(?<=:).*")
+        let userRemovedMsg = re.exec(String(lowerJson));
+        let lessURL = String(userRemovedMsg).replace("http\S+", "");
+        var sentiment = new Sentiment();
+        var result = sentiment.analyze(lessURL);
+        // Create Tweet Obj
+        const dataObj = {
+          tweetText: lessURL,
+          tweetId: json.data.id,
+          timestamp: timestamp,
+          tag: json.matching_rules[0].tag,
+          score: result.score,
+          comparativeScore: result.comparative
         }
+        // console.log('Formatted Tweet:' + JSON.stringify(dataObj));
+        // Store in Redis
+        let cacheJSON = Object.assign({}, dataObj);
+        console.log('Storing in cache: ' + JSON.stringify(cacheJSON));
+        redisClient.setex(redisKey, 360, JSON.stringify(cacheJSON));
+        tweets.unshift(dataObj);
+      }
       // });
-  } catch (e) {
+    } catch (e) {
       // Keep alive signal received. Do nothing.
     }
   }).on('error', error => {
@@ -202,5 +224,7 @@ async function streamConnect() {
 
   return stream;
 };
+
+
 
 module.exports = router;

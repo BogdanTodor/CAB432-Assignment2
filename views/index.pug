@@ -29,3 +29,14 @@ block content
           ul #{tweet.tweetText} <b> tag:</b> #{tweet.tag}, <b>score:</b> (#{tweet.score}, #{tweet.comparativeScore})
     div(class="col")
       p Sentiment Analysis stuff goes this side
+
+      div(class="row")
+        canvas#myChart(data-series=chartData)
+
+      br
+
+      div(class="row")
+        canvas#lineChart
+
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.js"></script>
+      <script src="genChart.js"></script>

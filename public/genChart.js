@@ -52,7 +52,8 @@ window.onload = function () {
         type: 'line',
         data: {
             labels: ["match1", "match2", "match3", "match4", "match5"], //labels would be
-            datasets: [{
+            datasets: [
+                {
                     label: "TeamA Score",
                     data: [10, 50, 25, 70, 40], // historical data
                     backgroundColor: "blue",

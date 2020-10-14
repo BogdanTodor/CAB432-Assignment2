@@ -19,10 +19,10 @@ router.get('/', async (req, res) => {
   let keys = [];
   let tweets = [];
 
-  let labelArray = ['tag1', 'tag2']; // empty
-  let negArray = [130, 56]; // empty
-  let neutralArray = [110, 87]; // empty
-  let posArray = [50, 144]; // empty
+  let labelArray = []; // empty
+  let negArray = []; // empty
+  let neutralArray = []; // empty
+  let posArray = []; // empty
 
   let chartData = [
     labelArray,
@@ -60,16 +60,46 @@ router.get('/', async (req, res) => {
   }
   console.log('Keys: ' + JSON.stringify(keys));
 
+  for (let rule of rules){
+    labelArray.push(rule.tag);
+  }
+
   // Use Redis Keys to get Tweets Objects
   for (let redisKey of keys) {
     let cachedTweet = await redisClient.get(redisKey);
     tweets.push(JSON.parse(cachedTweet));
-    // console.log(JSON.stringify(cachedTweet));
+    let tweetObj = JSON.parse(cachedTweet);
+    // console.log(tweetObj);
+
+    if(tweetObj.score > 1){
+      if(posArray[labelArray.indexOf(tweetObj.tag)] > 0){
+        posArray[labelArray.indexOf(tweetObj.tag)]++;
+      }
+      else{
+        posArray[labelArray.indexOf(tweetObj.tag)] = 1;
+      }
+    } 
+    else if(tweetObj.score < 1){
+      if(negArray[labelArray.indexOf(tweetObj.tag)] > 0){
+        negArray[labelArray.indexOf(tweetObj.tag)]++;
+      }
+      else{
+        negArray[labelArray.indexOf(tweetObj.tag)] = 1;
+      }
+    }
+    else{
+      if(neutralArray[labelArray.indexOf(tweetObj.tag)] > 0){
+        neutralArray[labelArray.indexOf(tweetObj.tag)]++;
+      }
+      else{
+        neutralArray[labelArray.indexOf(tweetObj.tag)] = 1;
+      }
+    }
   }
   // console.log('Tweets: ' + JSON.stringify(tweets));
 
-
   // For debugging purposes
+  console.log(labelArray);
   console.log(chartData);
   console.log(JSON.stringify(chartData));
 

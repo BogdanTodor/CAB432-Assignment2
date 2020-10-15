@@ -19,10 +19,10 @@ router.get('/', async (req, res) => {
   let keys = [];
   let tweets = [];
 
-  let labelArray; // empty
-  let negArray; // empty
-  let neutralArray; // empty
-  let posArray; // empty
+  let labelArray = [];
+  let negArray = [];
+  let neutralArray = [];
+  let posArray = [];
 
   // Get Active Twitter Rules
   const twitter_token = getTwitterAuth();
@@ -65,9 +65,23 @@ router.get('/', async (req, res) => {
   // Use Redis Keys to get Tweets Objects
   for (let redisKey of keys) {
     let cachedTweet = await redisClient.get(redisKey);
-    tweets.push(JSON.parse(cachedTweet));
-    let tweetObj = JSON.parse(cachedTweet);
 
+    tweetObj = JSON.parse(cachedTweet);
+
+    // Perform Sentiment Analysis 
+    const lowerJson = tweetObj.tweetText.toLowerCase();
+    let re = new RegExp("(?<=:).*")
+    let userRemovedMsg = re.exec(String(lowerJson));
+    let lessURL = String(userRemovedMsg).replace("http\S+", "");
+    var sentiment = new Sentiment();
+    var result = sentiment.analyze(lessURL);
+
+    tweetObj.score = result.score;
+    tweetObj.comparativeScore = result.comparative;
+
+    tweets.push(tweetObj);
+
+    // Categorise Sentiment 
     if(tweetObj.score > 1){
       posArray[labelArray.indexOf(tweetObj.tag)]++;
     } 
@@ -190,43 +204,21 @@ async function streamConnect() {
 
   stream.on('data', async data => {
     try {
-      const json = JSON.parse(data);
-      // console.log("New Tweet: " + JSON.stringify(json));
+        const json = JSON.parse(data);
 
-      const redisKey = `${json.matching_rules[0].tag}:${json.data.id}`;
-      // console.log(redisKey);
+        const redisKey = `${json.matching_rules[0].tag}:${json.data.id}`;
 
-      // Check if tweet exists in Redis
-      let cacheTweet = await redisClient.get(redisKey); //, (err, result) => {
-      if (cacheTweet) {
-        // console.log("Already in cache");
-      } else {
-        // console.log('Not in cache');
-        // Get timestamp
         let timestamp = Math.floor(+new Date());
-        // Run Sentiment Analysis
-        const lowerJson = json.data.text.toLowerCase();
-        let re = new RegExp("(?<=:).*")
-        let userRemovedMsg = re.exec(String(lowerJson));
-        let lessURL = String(userRemovedMsg).replace("http\S+", "");
-        var sentiment = new Sentiment();
-        var result = sentiment.analyze(lessURL);
-        // Create Tweet Obj
         const dataObj = {
-          tweetText: lessURL,
+          tweetText: json.data.text,
           tweetId: json.data.id,
           timestamp: timestamp,
-          tag: json.matching_rules[0].tag,
-          score: result.score,
-          comparativeScore: result.comparative
+          tag: json.matching_rules[0].tag
         }
-        // console.log('Formatted Tweet:' + JSON.stringify(dataObj));
-        // Store in Redis
         let cacheJSON = Object.assign({}, dataObj);
+
         console.log('Storing in cache: ' + JSON.stringify(cacheJSON));
         redisClient.setex(redisKey, 360, JSON.stringify(cacheJSON));
-        tweets.unshift(dataObj);
-      }
     } catch (e) {
       // Keep alive signal received. Do nothing.
     }

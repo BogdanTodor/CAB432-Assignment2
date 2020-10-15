@@ -1,6 +1,5 @@
 const express = require('express');
 const axios = require('axios');
-const needle = require('needle');
 const router = express.Router();
 const Sentiment = require('sentiment');
 const redis = require('async-redis');
@@ -9,12 +8,12 @@ const redis = require('async-redis');
 const twitter = {
   bearer_token: 'AAAAAAAAAAAAAAAAAAAAAH7SGwEAAAAAMerg5B1I%2FC48tDU6b5qC8xHcS%2BY%3DBAvtWfRzXTSlv7qGgPVZTvg8s8VxtUqt1BWOMEFpGjFVghF30D'
 };
-streamConnect()
+
+const redisClient = redis.createClient({host:'n9767126-twitter-sentiment.km2jzi.ng.0001.apse2.cache.amazonaws.com', port: 6379});
 
 /* Routes */
 // GET home page
 router.get('/', async (req, res) => {
-  const redisClient = redis.createClient();
   let rules = [];
   let keys = [];
   let tweets = [];
@@ -191,49 +190,5 @@ async function postAPIRequest(url, data, config_token) {
     console.log(error);
   }
 }
-
-async function streamConnect() {
-  //Listen to the stream
-  const options = {
-    timeout: 20000
-  }
-
-  const token = getTwitterAuth();
-  const stream = needle.get('https://api.twitter.com/2/tweets/search/stream', token, options);
-  const redisClient = redis.createClient();
-
-  stream.on('data', async data => {
-    try {
-        const json = JSON.parse(data);
-
-        const redisKey = `${json.matching_rules[0].tag}:${json.data.id}`;
-
-        let timestamp = Math.floor(+new Date());
-        const dataObj = {
-          tweetText: json.data.text,
-          tweetId: json.data.id,
-          timestamp: timestamp,
-          tag: json.matching_rules[0].tag
-        }
-        let cacheJSON = Object.assign({}, dataObj);
-
-        console.log('Storing in cache: ' + JSON.stringify(cacheJSON));
-        redisClient.setex(redisKey, 360, JSON.stringify(cacheJSON));
-    } catch (e) {
-      // Keep alive signal received. Do nothing.
-    }
-  }).on('error', error => {
-    if (error.code === 'ETIMEDOUT') {
-      console.log('Stream Connection Timed Out');
-      stream.emit('timeout');
-      stream.abort();
-      setTimeout(streamConnect(), 5000);
-    }
-  });
-
-  return stream;
-};
-
-
 
 module.exports = router;

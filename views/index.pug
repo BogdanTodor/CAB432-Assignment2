@@ -31,12 +31,12 @@ block content
       p Sentiment Analysis stuff goes this side
 
       div(class="row")
-        canvas#myChart(data-series=chartData)
+        canvas#myChart(data-series=barChartData)
 
       br
 
       div(class="row")
-        canvas#lineChart
+        canvas#lineChart(data-series=lineGraphData)
 
       <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.js"></script>
-      <script src="genChart.js"></script>
+      <script src="/javascripts/genChart.js"></script>

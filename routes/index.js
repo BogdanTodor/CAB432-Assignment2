@@ -88,7 +88,10 @@ router.get('/', async (req, res) => {
   for (let redisKey of keys) {
     let cachedTweet = await redisClient.get(redisKey);
     tweetObj = JSON.parse(cachedTweet);
-
+    // If tweet was deleted from cache continue to next iteration
+    if (!tweetObj) {
+      continue;
+    }
     // Perform Sentiment Analysis 
     const lowerJson = tweetObj.tweetText.toLowerCase();
     let re = new RegExp("(?<=:).*")
@@ -105,10 +108,10 @@ router.get('/', async (req, res) => {
     // Do operations to get categorised sentiment and average sentiment 
     totalTweets[labelArray.indexOf(tweetObj.tag)]++;
     sumScores[labelArray.indexOf(tweetObj.tag)] += tweetObj.score;
-    if(tweetObj.score > 1){
+    if(tweetObj.score > 0.5){
       posArray[labelArray.indexOf(tweetObj.tag)]++;
     } 
-    else if(tweetObj.score < 1){
+    else if(tweetObj.score < -0.5){
       negArray[labelArray.indexOf(tweetObj.tag)]++;
     }
     else{
@@ -163,8 +166,34 @@ router.get('/', async (req, res) => {
     posArray
   ];
 
+  // historical_data = [[{"timestamp":"a","score":1},{"timestamp":"b","score":2},{"timestamp":"c","score":3}],[{"timestamp":"b","score":4},{"timestamp":"c","score":5},{"timestamp":"d","score":6}]];
+
+  let overlappingTimestamps;
+  // Get overlapping timestamps
+  if (Object.keys(rules).length != 0) {
+    overlappingTimestamps = historical_data[0].map(e => e.timestamp);
+    console.log('\n timestampArray: ' + JSON.stringify(overlappingTimestamps));
+
+    for (let i = 1; i < labelArray.length ; i++) {
+      // Get array of timestamps
+      let timestampArray = historical_data[i].map(e => e.timestamp);
+      console.log('\n timestampArray: ' + JSON.stringify(timestampArray));
+  
+      // Get overlapping timestamps
+      overlappingTimestamps = overlappingTimestamps.filter(element => timestampArray.includes(element));
+    }
+    console.log('\n overlappingTimestamps: ' + JSON.stringify(overlappingTimestamps));
+  
+    for (let i = 0; i < labelArray.length ; i++) {
+      historical_data[i] = historical_data[i].filter(element => overlappingTimestamps.includes(element.timestamp));
+      historical_data[i] = historical_data[i].map(e => e.score);
+    }
+  }
+  console.log('\n historical_data used for graphs: ' + JSON.stringify(historical_data));
+
   let lineGraphData = [
     labelArray,
+    overlappingTimestamps,
     historical_data
   ]
 
@@ -172,7 +201,8 @@ router.get('/', async (req, res) => {
     title: 'Welcome to Twitter Sentiment Analysis',
     rules: rules,
     tweets: tweets,
-    chartData: JSON.stringify(chartData)
+    barChartData: chartData,
+    lineGraphData: lineGraphData
   });
 });
 

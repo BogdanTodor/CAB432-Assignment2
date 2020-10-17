@@ -4,6 +4,13 @@ const needle = require('needle');
 const router = express.Router();
 const Sentiment = require('sentiment');
 const redis = require('async-redis');
+const AWS = require('aws-sdk');
+
+// Set region for AWS
+AWS.config.update({region: 'ap-southeast-2'});
+
+// Create DynamoDB service object
+var ddb = new AWS.DynamoDB({apiVersion: '2012-08-10'});
 
 /* API Keys (move to environment variable) */
 const twitter = {
@@ -19,10 +26,30 @@ router.get('/', async (req, res) => {
   let keys = [];
   let tweets = [];
 
+<<<<<<< Updated upstream
+<<<<<<< HEAD
   let labelArray; // empty
+=======
+  let labelArray = []; // empty
+>>>>>>> Stashed changes
   let negArray; // empty
   let neutralArray; // empty
   let posArray; // empty
+=======
+  let labelArray = []; // empty
+  let negArray = []; // empty
+  let neutralArray = []; // empty
+  let posArray = []; // empty
+
+  let chartData = [
+    labelArray,
+    negArray,
+    neutralArray,
+    posArray
+  ]
+
+>>>>>>> c699f6fc5eaba69f5623e21254a40b05a8d43079
+
 
   // Get Active Twitter Rules
   const twitter_token = getTwitterAuth();
@@ -56,17 +83,74 @@ router.get('/', async (req, res) => {
     labelArray.push(rule.tag);
   }
 
+<<<<<<< HEAD
   let arraySize = rules.length;
 
   negArray = new Array(arraySize).fill(0); // empty
   neutralArray = new Array(arraySize).fill(0); // empty
   posArray = new Array(arraySize).fill(0); // empty
 
+<<<<<<< Updated upstream
+=======
+>>>>>>> c699f6fc5eaba69f5623e21254a40b05a8d43079
+=======
+  historical_data = [];
+
+  // let sessionData = historical_data.map(String);
+ 
+
+  for(var i = 0; i < labelArray.length; i++){
+    historical_data[i] = new Array();
+  }
+
+  console.log(labelArray);
+
+  console.log('before');
+  console.log(historical_data);
+
+  // DynamoDB pull data
+  for(let tweetTag of labelArray){
+    var params = {
+      TableName: 'TwitterSentimentAnalysis',
+      Key: {
+        'TAG': {S: tweetTag}
+      }
+    };
+    
+    const data = await ddb.getItem(params).promise();
+    
+    console.log(Object.keys(data).length);
+
+    if(Object.keys(data).length != 0){
+      let historicalSessionData = data.Item.HISTORICAL_DATA.S;
+      historical_data.splice(labelArray.indexOf(tweetTag), 1, JSON.parse(historicalSessionData));
+    }
+  }
+
+  console.log('after');
+  console.log(historical_data);
+
+  let sumScores = new Array(arraySize).fill(0);
+  let totalTweets = new Array(arraySize).fill(0);
+  let avgScore = new Array(arraySize).fill(0);
+
+>>>>>>> Stashed changes
   // Use Redis Keys to get Tweets Objects
   for (let redisKey of keys) {
     let cachedTweet = await redisClient.get(redisKey);
     tweets.push(JSON.parse(cachedTweet));
     let tweetObj = JSON.parse(cachedTweet);
+<<<<<<< HEAD
+
+    let lineDataObj = {
+      "timestamp": tweetObj.timestamp,
+      "score": tweetObj.score
+    };
+
+    totalTweets[labelArray.indexOf(tweetObj.tag)]++;
+    sumScores[labelArray.indexOf(tweetObj.tag)] += tweetObj.score;
+
+    // historical_data[labelArray.indexOf(tweetObj.tag)].push(lineDataObj); // move to outside of for loop - create timestamp on refresh and have the score be the average
 
     if(tweetObj.score > 1){
       posArray[labelArray.indexOf(tweetObj.tag)]++;
@@ -76,21 +160,111 @@ router.get('/', async (req, res) => {
     }
     else{
       neutralArray[labelArray.indexOf(tweetObj.tag)]++;
+=======
+    // console.log(tweetObj);
+
+    if(tweetObj.score > 1){
+      if(posArray[labelArray.indexOf(tweetObj.tag)] > 0){
+        posArray[labelArray.indexOf(tweetObj.tag)]++;
+      }
+      else{
+        posArray[labelArray.indexOf(tweetObj.tag)] = 1;
+      }
+    } 
+    else if(tweetObj.score < 1){
+      if(negArray[labelArray.indexOf(tweetObj.tag)] > 0){
+        negArray[labelArray.indexOf(tweetObj.tag)]++;
+      }
+      else{
+        negArray[labelArray.indexOf(tweetObj.tag)] = 1;
+      }
+    }
+    else{
+      if(neutralArray[labelArray.indexOf(tweetObj.tag)] > 0){
+        neutralArray[labelArray.indexOf(tweetObj.tag)]++;
+      }
+      else{
+        neutralArray[labelArray.indexOf(tweetObj.tag)] = 1;
+      }
+>>>>>>> c699f6fc5eaba69f5623e21254a40b05a8d43079
     }
   }
-  // console.log('Tweets: ' + JSON.stringify(tweets));
 
+  for(let i = 0; i < sumScores.length; i++){
+    avgScore[i] = sumScores[i]/totalTweets[i];
+  }
+
+  let sessionTimeStamp = Math.floor(+new Date());
+
+  for(let tag of labelArray){
+    console.log(tag);
+
+    let lineDataObj = {
+      "timestamp": sessionTimeStamp,
+      "score": avgScore[labelArray.indexOf(tag)]
+    };
+
+    historical_data[labelArray.indexOf(tag)].push(lineDataObj); // move to outside of for loop - create timestamp on refresh and have the score be the average
+  }
+
+  // console.log('Tweets: ' + JSON.stringify(tweets));
+  console.log('total tweets:');
+  console.log(totalTweets);
+  console.log('sum of scores:');
+  console.log(sumScores);
+
+  console.log('average score in session:');
+  console.log(avgScore);
+
+  console.log('data to be inserted');
+  console.log(historical_data);
+
+<<<<<<< HEAD
   let chartData = [
     labelArray,
     negArray,
     neutralArray,
     posArray
+  ];
+
+  let lineGraphData = [
+    labelArray,
+    historical_data
   ]
 
+<<<<<<< Updated upstream
+=======
+>>>>>>> c699f6fc5eaba69f5623e21254a40b05a8d43079
+=======
+  // insert data into DynamoDB
+  for(let tweetTag of labelArray){
+    var params = {
+      TableName: 'TwitterSentimentAnalysis',
+      Item: {
+        'TAG' : {S: tweetTag},
+        'HISTORICAL_DATA' : {S: JSON.stringify(lineGraphData[1][labelArray.indexOf(tweetTag)])}
+      }
+    };
+
+    // Push into DynamoDB
+    ddb.putItem(params, function(err, data) {
+      if (err) {
+        console.log("Error", err);
+      } else {
+        console.log("Success", data);
+      }
+    });
+  }
+
+>>>>>>> Stashed changes
   // For debugging purposes
-  console.log(labelArray);
-  console.log(chartData);
-  console.log(JSON.stringify(chartData));
+  // console.log(labelArray);
+  // console.log(chartData);
+  // console.log(JSON.stringify(chartData));
+
+  console.log('\n all entries');
+  console.log(historical_data);
+
 
   res.render('index', {
     title: 'Welcome to Twitter Sentiment Analysis',

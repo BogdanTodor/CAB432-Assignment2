@@ -1,6 +1,5 @@
 const express = require('express');
 const axios = require('axios');
-const needle = require('needle');
 const router = express.Router();
 const Sentiment = require('sentiment');
 const redis = require('async-redis');
@@ -12,25 +11,23 @@ AWS.config.update({region: 'ap-southeast-2'});
 // Create DynamoDB service object
 var ddb = new AWS.DynamoDB({apiVersion: '2012-08-10'});
 
+// Create Redis Client
+// const redisClient = redis.createClient({host:'n9767126-twitter-sentiment.km2jzi.ng.0001.apse2.cache.amazonaws.com', port: 6379});
+const redisClient = redis.createClient();
+
 /* API Keys (move to environment variable) */
 const twitter = {
   bearer_token: 'AAAAAAAAAAAAAAAAAAAAAH7SGwEAAAAAMerg5B1I%2FC48tDU6b5qC8xHcS%2BY%3DBAvtWfRzXTSlv7qGgPVZTvg8s8VxtUqt1BWOMEFpGjFVghF30D'
 };
-streamConnect()
 
 /* Routes */
 // GET home page
 router.get('/', async (req, res) => {
-  const redisClient = redis.createClient();
   let rules = [];
   let keys = [];
   let tweets = [];
-
-  let labelArray = []; // empty
-  let negArray; // empty
-  let neutralArray; // empty
-  let posArray; // empty
-
+  let labelArray = [];
+  let historical_data = [];
 
   // Get Active Twitter Rules
   const twitter_token = getTwitterAuth();
@@ -44,47 +41,24 @@ router.get('/', async (req, res) => {
   }
 
   // Get Redis Keys for Tweets with tags matching the Active Rules
+  let i = 0;
   for (let rule of rules) {
     let pattern = rule.value + '*';
-    // console.log('Pattern: ' + pattern)
     let firstScanResult = await redisClient.scan('0', "MATCH", pattern);
     let cursor = firstScanResult[0];
     keys = keys.concat(firstScanResult[1]);
-    // console.log('First scanResult: ' + JSON.stringify(firstScanResult));
     while (cursor > 0) {
       let scanResult = await redisClient.scan(cursor, "MATCH", pattern);
       cursor = scanResult[0];
       keys = keys.concat(scanResult[1]);
-      // console.log('scanResult: ' + JSON.stringify(scanResult));
     }
-  }
-  console.log('Keys: ' + JSON.stringify(keys));
-
-  for (let rule of rules){
     labelArray.push(rule.tag);
+    historical_data[i++] = new Array();
   }
-
-  let arraySize = rules.length;
-
-  negArray = new Array(arraySize).fill(0); // empty
-  neutralArray = new Array(arraySize).fill(0); // empty
-  posArray = new Array(arraySize).fill(0); // empty
-
-  historical_data = [];
-
-  // let sessionData = historical_data.map(String);
- 
-
-  for(var i = 0; i < labelArray.length; i++){
-    historical_data[i] = new Array();
-  }
-
-  console.log(labelArray);
-
-  console.log('before');
-  console.log(historical_data);
+  console.log('Label Array: ' + JSON.stringify(labelArray));
 
   // DynamoDB pull data
+  console.log('\nHistorical Data before: ' + JSON.stringify(historical_data));
   for(let tweetTag of labelArray){
     var params = {
       TableName: 'TwitterSentimentAnalysis',
@@ -92,28 +66,27 @@ router.get('/', async (req, res) => {
         'TAG': {S: tweetTag}
       }
     };
-    
     const data = await ddb.getItem(params).promise();
-    
-    console.log(Object.keys(data).length);
-
     if(Object.keys(data).length != 0){
       let historicalSessionData = data.Item.HISTORICAL_DATA.S;
       historical_data.splice(labelArray.indexOf(tweetTag), 1, JSON.parse(historicalSessionData));
     }
   }
+  console.log("\nHistorical Data after: " + JSON.stringify(historical_data));
 
-  console.log('after');
-  console.log(historical_data);
+  // Create Arrays to store categorised sentiment scores
+  let negArray = new Array(rules.length).fill(0);
+  let neutralArray = new Array(rules.length).fill(0);
+  let posArray = new Array(rules.length).fill(0);
 
-  let sumScores = new Array(arraySize).fill(0);
-  let totalTweets = new Array(arraySize).fill(0);
-  let avgScore = new Array(arraySize).fill(0);
+  // Create Arrays to get average score for each rule
+  let sumScores = new Array(rules.length).fill(0);
+  let totalTweets = new Array(rules.length).fill(0);
+  let avgScore = new Array(rules.length).fill(0);
 
   // Use Redis Keys to get Tweets Objects
   for (let redisKey of keys) {
     let cachedTweet = await redisClient.get(redisKey);
-
     tweetObj = JSON.parse(cachedTweet);
 
     // Perform Sentiment Analysis 
@@ -124,22 +97,14 @@ router.get('/', async (req, res) => {
     var sentiment = new Sentiment();
     var result = sentiment.analyze(lessURL);
 
+    // Attach scores to tweet
     tweetObj.score = result.score;
     tweetObj.comparativeScore = result.comparative;
-
     tweets.push(tweetObj);
 
-
-    let lineDataObj = {
-      "timestamp": tweetObj.timestamp,
-      "score": tweetObj.score
-    };
-
+    // Do operations to get categorised sentiment and average sentiment 
     totalTweets[labelArray.indexOf(tweetObj.tag)]++;
     sumScores[labelArray.indexOf(tweetObj.tag)] += tweetObj.score;
-
-    // historical_data[labelArray.indexOf(tweetObj.tag)].push(lineDataObj); // move to outside of for loop - create timestamp on refresh and have the score be the average
-
     if(tweetObj.score > 1){
       posArray[labelArray.indexOf(tweetObj.tag)]++;
     } 
@@ -151,6 +116,7 @@ router.get('/', async (req, res) => {
     }
   }
 
+  // Calculate average sentiment scoree for each tweet
   for(let i = 0; i < sumScores.length; i++){
     if(totalTweets[i] > 0){
       avgScore[i] = sumScores[i]/totalTweets[i];
@@ -160,31 +126,36 @@ router.get('/', async (req, res) => {
     }
   }
 
+  // Get session score for each tag and append to data pulled from DynamoDB
   let sessionTimeStamp = Math.floor(+new Date());
-
   for(let tag of labelArray){
-    console.log(tag);
-
     let lineDataObj = {
       "timestamp": sessionTimeStamp,
       "score": avgScore[labelArray.indexOf(tag)]
     };
+    historical_data[labelArray.indexOf(tag)].push(lineDataObj);
+  }
+  console.log("\nHistorical Data to be pushed: " + JSON.stringify(historical_data));
 
-    historical_data[labelArray.indexOf(tag)].push(lineDataObj); // move to outside of for loop - create timestamp on refresh and have the score be the average
+  // Insert data into DynamoDB
+  for(let tag of labelArray){
+    var params = {
+      TableName: 'TwitterSentimentAnalysis',
+      Item: {
+        'TAG' : {S: tag},
+        'HISTORICAL_DATA' : {S: JSON.stringify(historical_data[labelArray.indexOf(tag)])}
+      }
+    };
+    ddb.putItem(params, function(err, data) {
+      if (err) {
+        console.log("Error", err);
+      } else {
+        console.log("Success", data);
+      }
+    });
   }
 
-  // console.log('Tweets: ' + JSON.stringify(tweets));
-  console.log('total tweets:');
-  console.log(totalTweets);
-  console.log('sum of scores:');
-  console.log(sumScores);
-
-  console.log('average score in session:');
-  console.log(avgScore);
-
-  console.log('data to be inserted');
-  console.log(historical_data);
-
+  // Create required Chart data to send to frontend Javascript
   let chartData = [
     labelArray,
     negArray,
@@ -196,34 +167,6 @@ router.get('/', async (req, res) => {
     labelArray,
     historical_data
   ]
-
-  // insert data into DynamoDB
-  for(let tweetTag of labelArray){
-    var params = {
-      TableName: 'TwitterSentimentAnalysis',
-      Item: {
-        'TAG' : {S: tweetTag},
-        'HISTORICAL_DATA' : {S: JSON.stringify(lineGraphData[1][labelArray.indexOf(tweetTag)])}
-      }
-    };
-
-    // Push into DynamoDB
-    ddb.putItem(params, function(err, data) {
-      if (err) {
-        console.log("Error", err);
-      } else {
-        console.log("Success", data);
-      }
-    });
-  }
-
-  // For debugging purposes
-  // console.log(labelArray);
-  // console.log(chartData);
-  // console.log(JSON.stringify(chartData));
-
-  console.log('\n all entries');
-  console.log(historical_data);
 
   res.render('index', {
     title: 'Welcome to Twitter Sentiment Analysis',
@@ -310,49 +253,5 @@ async function postAPIRequest(url, data, config_token) {
     console.log(error);
   }
 }
-
-async function streamConnect() {
-  //Listen to the stream
-  const options = {
-    timeout: 20000
-  }
-
-  const token = getTwitterAuth();
-  const stream = needle.get('https://api.twitter.com/2/tweets/search/stream', token, options);
-  const redisClient = redis.createClient();
-
-  stream.on('data', async data => {
-    try {
-        const json = JSON.parse(data);
-
-        const redisKey = `${json.matching_rules[0].tag}:${json.data.id}`;
-
-        let timestamp = Math.floor(+new Date());
-        const dataObj = {
-          tweetText: json.data.text,
-          tweetId: json.data.id,
-          timestamp: timestamp,
-          tag: json.matching_rules[0].tag
-        }
-        let cacheJSON = Object.assign({}, dataObj);
-
-        console.log('Storing in cache: ' + JSON.stringify(cacheJSON));
-        redisClient.setex(redisKey, 360, JSON.stringify(cacheJSON));
-    } catch (e) {
-      // Keep alive signal received. Do nothing.
-    }
-  }).on('error', error => {
-    if (error.code === 'ETIMEDOUT') {
-      console.log('Stream Connection Timed Out');
-      stream.emit('timeout');
-      stream.abort();
-      setTimeout(streamConnect(), 5000);
-    }
-  });
-
-  return stream;
-};
-
-
 
 module.exports = router;

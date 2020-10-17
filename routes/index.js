@@ -27,8 +27,12 @@ router.get('/', async (req, res) => {
   let tweets = [];
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 <<<<<<< HEAD
   let labelArray; // empty
+=======
+  let labelArray = []; // empty
+>>>>>>> Stashed changes
 =======
   let labelArray = []; // empty
 >>>>>>> Stashed changes
@@ -49,6 +53,7 @@ router.get('/', async (req, res) => {
   ]
 
 >>>>>>> c699f6fc5eaba69f5623e21254a40b05a8d43079
+
 
 
   // Get Active Twitter Rules
@@ -91,9 +96,12 @@ router.get('/', async (req, res) => {
   posArray = new Array(arraySize).fill(0); // empty
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
 >>>>>>> c699f6fc5eaba69f5623e21254a40b05a8d43079
 =======
+=======
+>>>>>>> Stashed changes
   historical_data = [];
 
   // let sessionData = historical_data.map(String);
@@ -134,6 +142,9 @@ router.get('/', async (req, res) => {
   let totalTweets = new Array(arraySize).fill(0);
   let avgScore = new Array(arraySize).fill(0);
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
   // Use Redis Keys to get Tweets Objects
   for (let redisKey of keys) {
@@ -141,6 +152,16 @@ router.get('/', async (req, res) => {
     tweets.push(JSON.parse(cachedTweet));
     let tweetObj = JSON.parse(cachedTweet);
 <<<<<<< HEAD
+
+    let lineDataObj = {
+      "timestamp": tweetObj.timestamp,
+      "score": tweetObj.score
+    };
+
+    totalTweets[labelArray.indexOf(tweetObj.tag)]++;
+    sumScores[labelArray.indexOf(tweetObj.tag)] += tweetObj.score;
+
+    // historical_data[labelArray.indexOf(tweetObj.tag)].push(lineDataObj); // move to outside of for loop - create timestamp on refresh and have the score be the average
 
     let lineDataObj = {
       "timestamp": tweetObj.timestamp,
@@ -215,6 +236,12 @@ router.get('/', async (req, res) => {
 
   console.log('average score in session:');
   console.log(avgScore);
+<<<<<<< Updated upstream
+=======
+
+  console.log('data to be inserted');
+  console.log(historical_data);
+>>>>>>> Stashed changes
 
   console.log('data to be inserted');
   console.log(historical_data);
@@ -233,9 +260,12 @@ router.get('/', async (req, res) => {
   ]
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
 >>>>>>> c699f6fc5eaba69f5623e21254a40b05a8d43079
 =======
+=======
+>>>>>>> Stashed changes
   // insert data into DynamoDB
   for(let tweetTag of labelArray){
     var params = {
@@ -256,6 +286,9 @@ router.get('/', async (req, res) => {
     });
   }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
   // For debugging purposes
   // console.log(labelArray);

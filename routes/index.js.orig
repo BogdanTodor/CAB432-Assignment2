@@ -29,12 +29,8 @@ router.get('/', async (req, res) => {
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
-<<<<<<< Updated upstream
 <<<<<<< HEAD
   let labelArray; // empty
-=======
-  let labelArray = []; // empty
->>>>>>> Stashed changes
 =======
   let labelArray = []; // empty
 >>>>>>> Stashed changes
@@ -61,7 +57,6 @@ router.get('/', async (req, res) => {
   ]
 
 >>>>>>> c699f6fc5eaba69f5623e21254a40b05a8d43079
-
 
 
 
@@ -108,12 +103,9 @@ router.get('/', async (req, res) => {
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
-<<<<<<< Updated upstream
 =======
 >>>>>>> c699f6fc5eaba69f5623e21254a40b05a8d43079
 =======
-=======
->>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
@@ -160,9 +152,6 @@ router.get('/', async (req, res) => {
 
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
@@ -174,16 +163,6 @@ router.get('/', async (req, res) => {
     tweets.push(JSON.parse(cachedTweet));
     let tweetObj = JSON.parse(cachedTweet);
 <<<<<<< HEAD
-
-    let lineDataObj = {
-      "timestamp": tweetObj.timestamp,
-      "score": tweetObj.score
-    };
-
-    totalTweets[labelArray.indexOf(tweetObj.tag)]++;
-    sumScores[labelArray.indexOf(tweetObj.tag)] += tweetObj.score;
-
-    // historical_data[labelArray.indexOf(tweetObj.tag)].push(lineDataObj); // move to outside of for loop - create timestamp on refresh and have the score be the average
 
     let lineDataObj = {
       "timestamp": tweetObj.timestamp,
@@ -252,38 +231,6 @@ router.get('/', async (req, res) => {
 >>>>>>> c699f6fc5eaba69f5623e21254a40b05a8d43079
     }
   }
-<<<<<<< Updated upstream
-=======
-
-  for(let i = 0; i < sumScores.length; i++){
-    avgScore[i] = sumScores[i]/totalTweets[i];
-  }
-
-  let sessionTimeStamp = Math.floor(+new Date());
-
-  for(let tag of labelArray){
-    console.log(tag);
-
-    let lineDataObj = {
-      "timestamp": sessionTimeStamp,
-      "score": avgScore[labelArray.indexOf(tag)]
-    };
-
-    historical_data[labelArray.indexOf(tag)].push(lineDataObj); // move to outside of for loop - create timestamp on refresh and have the score be the average
-  }
-
-  // console.log('Tweets: ' + JSON.stringify(tweets));
-  console.log('total tweets:');
-  console.log(totalTweets);
-  console.log('sum of scores:');
-  console.log(sumScores);
-
-  console.log('average score in session:');
-  console.log(avgScore);
-
-  console.log('data to be inserted');
-  console.log(historical_data);
->>>>>>> Stashed changes
 
   for(let i = 0; i < sumScores.length; i++){
     avgScore[i] = sumScores[i]/totalTweets[i];
@@ -359,12 +306,9 @@ router.get('/', async (req, res) => {
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
-<<<<<<< Updated upstream
 =======
 >>>>>>> c699f6fc5eaba69f5623e21254a40b05a8d43079
 =======
-=======
->>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
@@ -391,9 +335,6 @@ router.get('/', async (req, res) => {
 
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes

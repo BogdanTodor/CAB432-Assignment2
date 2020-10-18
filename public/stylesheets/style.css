@@ -42,7 +42,8 @@ a {
 .scrollTweets {
   position: relative;
   border: 3px solid #00B4CC;
-  height: 400px;
+  height: 600px;
+  width: 100%;
   padding: 3px;
   overflow: auto;
   display: block;
@@ -54,4 +55,8 @@ a {
 
 .refreshButton {
   float: right;
+}
+
+input[id="error"]::placeholder {
+  color: red;
 }

@@ -13,17 +13,17 @@ window.onload = function () {
         data: {
             labels: labelArray,
             datasets: [{
-                    label: 'Negative',
+                    label: 'Negative (below -1)',
                     data: negArray,
                     backgroundColor: '#EBCCD1',
                 },
                 {
-                    label: 'Neutral',
+                    label: 'Neutral (-1 to +1)',
                     data: neutralArray,
                     backgroundColor: '#FAEBCC',
                 },
                 {
-                    label: 'Positive',
+                    label: 'Positive (above +1)',
                     data: posArray,
                     backgroundColor: '#D6E9C6',
                 }
@@ -35,7 +35,11 @@ window.onload = function () {
                     stacked: true
                 }],
                 yAxes: [{
-                    stacked: true
+                    stacked: true,
+                    scaleLabel: {
+                        display: true,
+                        labelString: "Number of Tweets",
+                    }
                 }]
             }
         }
@@ -90,7 +94,11 @@ window.onload = function () {
         options: {
             scales: {
                 yAxes: [{
-                    stacked: true
+                    stacked: true,
+                    scaleLabel: {
+                        display: true,
+                        labelString: "Average Sentiment Score",
+                    }
                 }]
             }
         }

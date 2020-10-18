@@ -5,10 +5,17 @@ block content
   div(class="container")
   div(class="row")
     div(class="col")
-      form(method='POST' action='/add-rule/')
-        div(class="form-group")
-          input.searchTerm(type='text' name='q' placeholder='Enter new tweet rule...' required='true')
-          button.searchButton(type='submit') Apply
+      h4 Add rules to filter real-time Tweets for Sentiment Analysis
+      if rules.length < 5
+        form(method='POST' action='/add-rule/')
+          div(class="form-group")
+            input.searchTerm(type='text' name='q' placeholder='Enter new tweet rule...' required='true')
+            button.searchButton(type='submit') Apply
+      else
+        div
+          div(class="form-group") 
+            input.searchTerm(type='text' id='error' placeholder='Max rules reached. Delete rules to add more.' style="placeholder:{color:red}" required='true')
+            button.searchButton(type='submit') Apply
       b Active Rules:
       div.scrollTable
         table(class="table")
@@ -20,23 +27,14 @@ block content
                     td=rule.value
                     td
                       button(type="submit" name="delete" value=rule.id class="btn btn-danger deleteButton") Delete
-      div
-      form(method='POST' action='/')
-        b Twitter Stream: <button class="btn refreshButton"> <span class="glyphicon glyphicon-refresh"></span> Refresh </button>
-      br
-      .scrollTweets
+      b Twitter Stream:
+      div.scrollTweets
         each tweet in tweets
-          ul #{tweet.tweetText} <b> tag:</b> #{tweet.tag}, <b>score:</b> (#{tweet.score}, #{tweet.comparativeScore})
+          ul <b>Tweet: </b>#{tweet.tweetText} <b> Tag:</b> #{tweet.tag}, <b>Score:</b> #{tweet.score}
     div(class="col")
-      p Sentiment Analysis stuff goes this side
-
-      div(class="row")
-        canvas#myChart(data-series=barChartData)
-
+      form(method='POST' action='/')
+        h4 Sentiment Analysis: <button class="btn refreshButton"> <span class="glyphicon glyphicon-refresh"></span> Refresh </button>
       br
-
-      div(class="row")
-        canvas#lineChart(data-series=lineGraphData)
-
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.js"></script>
-      <script src="/javascripts/genChart.js"></script>
+      canvas#myChart(data-series=barChartData)
+      h4 Historical Sentiment
+      canvas#lineChart(data-series=lineGraphData)

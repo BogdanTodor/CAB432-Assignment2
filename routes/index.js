@@ -108,10 +108,10 @@ router.get('/', async (req, res) => {
     // Do operations to get categorised sentiment and average sentiment 
     totalTweets[labelArray.indexOf(tweetObj.tag)]++;
     sumScores[labelArray.indexOf(tweetObj.tag)] += tweetObj.score;
-    if(tweetObj.score > 0.5){
+    if(tweetObj.score > 1){
       posArray[labelArray.indexOf(tweetObj.tag)]++;
     } 
-    else if(tweetObj.score < -0.5){
+    else if(tweetObj.score < -1){
       negArray[labelArray.indexOf(tweetObj.tag)]++;
     }
     else{
@@ -166,8 +166,6 @@ router.get('/', async (req, res) => {
     posArray
   ];
 
-  // historical_data = [[{"timestamp":"a","score":1},{"timestamp":"b","score":2},{"timestamp":"c","score":3}],[{"timestamp":"b","score":4},{"timestamp":"c","score":5},{"timestamp":"d","score":6}]];
-
   let overlappingTimestamps;
   // Get overlapping timestamps
   if (Object.keys(rules).length != 0) {
@@ -198,7 +196,7 @@ router.get('/', async (req, res) => {
   ]
 
   res.render('index', {
-    title: 'Welcome to Twitter Sentiment Analysis',
+    title: 'Twitter Sentiment Analysis Dashboard',
     rules: rules,
     tweets: tweets,
     barChartData: chartData,

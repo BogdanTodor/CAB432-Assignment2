@@ -42,7 +42,8 @@ router.get('/', async (req, res) => {
   const twitter_options = createTwitterRulesOptions();
   const twitter_url = `https://${twitter_options.hostname}${twitter_options.path}`;
   const twitter_rsp = await getAPIResponse(twitter_url, twitter_token);
-  if (twitter_rsp.data) {
+
+  if (twitter_rsp && twitter_rsp.data) {
     twitter_rsp.data.forEach(function (rule) {
       rules.push(rule);
     });

@@ -55,10 +55,10 @@ router.get('/', async (req, res) => {
     labelArray.push(rule.tag);
     historical_data[i++] = new Array();
   }
-  console.log('Label Array: ' + JSON.stringify(labelArray));
+  // console.log('Label Array: ' + JSON.stringify(labelArray));
 
   // DynamoDB pull data
-  console.log('\nHistorical Data before: ' + JSON.stringify(historical_data));
+  // console.log('\nHistorical Data before: ' + JSON.stringify(historical_data));
   for(let tweetTag of labelArray){
     var params = {
       TableName: 'TwitterSentimentAnalysis',
@@ -72,7 +72,7 @@ router.get('/', async (req, res) => {
       historical_data.splice(labelArray.indexOf(tweetTag), 1, JSON.parse(historicalSessionData));
     }
   }
-  console.log("\nHistorical Data after: " + JSON.stringify(historical_data));
+  // console.log("\nHistorical Data after: " + JSON.stringify(historical_data));
 
   // Create Arrays to store categorised sentiment scores
   let negArray = new Array(rules.length).fill(0);
@@ -138,7 +138,7 @@ router.get('/', async (req, res) => {
     };
     historical_data[labelArray.indexOf(tag)].push(lineDataObj);
   }
-  console.log("\nHistorical Data to be pushed: " + JSON.stringify(historical_data));
+  // console.log("\nHistorical Data to be pushed: " + JSON.stringify(historical_data));
 
   // Insert data into DynamoDB
   for(let tag of labelArray){
@@ -151,9 +151,9 @@ router.get('/', async (req, res) => {
     };
     ddb.putItem(params, function(err, data) {
       if (err) {
-        console.log("Error", err);
+        // console.log("Error", err);
       } else {
-        console.log("Success", data);
+        // console.log("Success", data);
       }
     });
   }
@@ -170,24 +170,24 @@ router.get('/', async (req, res) => {
   // Get overlapping timestamps
   if (Object.keys(rules).length != 0) {
     overlappingTimestamps = historical_data[0].map(e => e.timestamp);
-    console.log('\n timestampArray: ' + JSON.stringify(overlappingTimestamps));
+    // console.log('\n timestampArray: ' + JSON.stringify(overlappingTimestamps));
 
     for (let i = 1; i < labelArray.length ; i++) {
       // Get array of timestamps
       let timestampArray = historical_data[i].map(e => e.timestamp);
-      console.log('\n timestampArray: ' + JSON.stringify(timestampArray));
+      // console.log('\n timestampArray: ' + JSON.stringify(timestampArray));
   
       // Get overlapping timestamps
       overlappingTimestamps = overlappingTimestamps.filter(element => timestampArray.includes(element));
     }
-    console.log('\n overlappingTimestamps: ' + JSON.stringify(overlappingTimestamps));
+    // console.log('\n overlappingTimestamps: ' + JSON.stringify(overlappingTimestamps));
   
     for (let i = 0; i < labelArray.length ; i++) {
       historical_data[i] = historical_data[i].filter(element => overlappingTimestamps.includes(element.timestamp));
       historical_data[i] = historical_data[i].map(e => e.score);
     }
   }
-  console.log('\n historical_data used for graphs: ' + JSON.stringify(historical_data));
+  // console.log('\n historical_data used for graphs: ' + JSON.stringify(historical_data));
 
   let lineGraphData = [
     labelArray,
@@ -230,7 +230,7 @@ router.post('/add-rule/', async (req, res) => {
 // POST delete rule from twitter stream
 router.post('/delete-rule/', async (req, res) => {
   let old_rule = req.body.delete;
-  console.log('deleting: ' + old_rule);
+  // console.log('deleting: ' + old_rule);
 
   const twitter_token = getTwitterAuth();
   const twitter_options = createTwitterRulesOptions();
@@ -241,7 +241,7 @@ router.post('/delete-rule/', async (req, res) => {
     }
   };
   const twitter_rsp = await postAPIRequest(twitter_url, data, twitter_token);
-  console.log('Twitter Post Rsp: ' + JSON.stringify(twitter_rsp));
+  // console.log('Twitter Post Rsp: ' + JSON.stringify(twitter_rsp));
 
   res.redirect('/');
 });

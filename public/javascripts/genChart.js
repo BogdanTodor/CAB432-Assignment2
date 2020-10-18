@@ -78,10 +78,12 @@ window.onload = function () {
     }
 
     // Convert timestamp labels from milliseconds to locale date string
-    for (let i = 0; i < timestampLabels.length ; i++) {
-        timestampLabels[i] = new Date(timestampLabels[i]);
-        timestampLabels[i] = timestampLabels[i].toLocaleString();
-        console.log(timestampLabels[i]);
+    if (timestampLabels) {
+        for (let i = 0; i < timestampLabels.length ; i++) {
+            timestampLabels[i] = new Date(timestampLabels[i]);
+            timestampLabels[i] = timestampLabels[i].toLocaleString();
+            console.log(timestampLabels[i]);
+        }
     }
 
     new Chart(ctx2, {

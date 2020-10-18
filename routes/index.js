@@ -12,8 +12,8 @@ AWS.config.update({region: 'ap-southeast-2'});
 var ddb = new AWS.DynamoDB({apiVersion: '2012-08-10'});
 
 // Create Redis Client
-// const redisClient = redis.createClient({host:'n9767126-twitter-sentiment.km2jzi.ng.0001.apse2.cache.amazonaws.com', port: 6379});
-const redisClient = redis.createClient();
+const redisClient = redis.createClient({host:'n9767126-twitter-sentiment.km2jzi.ng.0001.apse2.cache.amazonaws.com', port: 6379});
+// const redisClient = redis.createClient();
 
 /* API Keys (move to environment variable) */
 const twitter = {
